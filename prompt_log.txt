@@ -1,0 +1,19 @@
+Review the code in this project against the spec in SPEC.md.
+For each item in the acceptance criteria, check whether the code
+actually implements it correctly. Also check for:
+- Bugs or logic errors
+- Missing error handling
+- Code quality issues (unclear naming, repeated code, etc.)
+- Security concerns (e.g., unsafe file handling)
+Format your review in a new file called REVIEW.md and as a numbered list of findings, each marked as
+[PASS], [FAIL], or [WARN]. Be specific — reference file names and
+line numbers.
+
+Linkedin works perfectly.
+Pinterest  seems to be croppped well etc. but opens popup asking to login.
+Youtube works now if I press Watch on Youtube after the initial error screen. is there a way to get rid of the inital error screen?
+Instagram is great in terms of horizontal length but vertically, it is cropped unncessarily short. 
+X is not previewing at all. Completely blank. 
+When I paste in Tiktok link says it is not supported. Isn't there a way to not limit embedding to specific sites but just identify the source from url?
+Most importantly, the long press feature (details in SPEC.md) are gone. Bring them back. Ideally I want the popup to look like it does on Pinterest. Shown in screenshot
+Make the platform count  on the stats section more space efficient. Maybe a sideways scroll with the most often shown by default and by scrolling see others.
