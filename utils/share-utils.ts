@@ -13,24 +13,24 @@ export interface ContentItem {
 export const detectPlatform = (url: string): Platform => {
   if (url.includes('youtube.com') || url.includes('youtu.be')) return 'youtube';
   if (url.includes('instagram.com')) return 'instagram';
-  if (url.includes('tiktok.com')) return 'tiktok';
+  if (url.includes('tiktok.com') || url.includes('vm.tiktok.com')) return 'tiktok';
   if (url.includes('pinterest.com') || url.includes('pin.it')) return 'pinterest';
   if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter';
   if (url.includes('linkedin.com')) return 'linkedin';
   return 'web';
 };
 
-export const getEmbedUrl = (url: string): string | null => {
+export const getEmbedUrl = (url: string): string => {
   const platform = detectPlatform(url);
   
   try {
     switch (platform) {
       case 'youtube': {
+        // Extract video ID only — used by react-native-youtube-iframe
         const id = url.includes('youtu.be/') 
           ? url.split('youtu.be/')[1]?.split('?')[0]
           : new URL(url).searchParams.get('v');
-        // Removing origin and simplifying to fix playback errors
-        return id ? `https://www.youtube.com/embed/${id}?autoplay=0&rel=0&showinfo=0&playsinline=1` : null;
+        return id || url; // fallback to raw URL if extraction fails
       }
       
       case 'instagram': {
@@ -39,14 +39,14 @@ export const getEmbedUrl = (url: string): string | null => {
           : url.includes('/reels/')
             ? url.split('/reels/')[1]?.split('/')[0]
             : url.split('/reel/')[1]?.split('/')[0];
-        return id ? `https://www.instagram.com/p/${id}/embed` : null;
+        return id || url;
       }
       
       case 'tiktok': {
         const id = url.includes('/video/') 
           ? url.split('/video/')[1]?.split('?')[0]
           : url.split('/v/')[1]?.split('?')[0];
-        return id ? `https://www.tiktok.com/embed/v2/${id}` : null;
+        return id ? `https://www.tiktok.com/embed/v2/${id}` : url;
       }
       
       case 'pinterest': {
@@ -57,12 +57,8 @@ export const getEmbedUrl = (url: string): string | null => {
       }
       
       case 'twitter': {
-        const idMatch = url.match(/status\/(\d+)/);
-        const id = idMatch ? idMatch[1] : null;
-        // Using id directly is more reliable than url for X
-        return id 
-          ? `https://platform.twitter.com/embed/Tweet.html?id=${id}&dnt=true` 
-          : `https://platform.twitter.com/embed/Tweet.html?url=${encodeURIComponent(url)}&dnt=true`;
+        // Use twitframe.com for reliable tweet embedding
+        return `https://twitframe.com/show?url=${encodeURIComponent(url)}`;
       }
 
       case 'linkedin': {
@@ -75,19 +71,32 @@ export const getEmbedUrl = (url: string): string | null => {
         return url;
     }
   } catch (e) {
-    return null;
+    return url; // Always fall back to raw URL, never null
   }
 };
 
-export const getDynamicHeight = (platform: Platform) => {
+// Returns true if this platform should span the full width (single column)
+export const isFullWidth = (platform: Platform): boolean => {
   switch (platform) {
-    case 'youtube': return 160;
-    case 'instagram': return 350;
-    case 'tiktok': return 420;
-    case 'pinterest': return 380;
-    case 'twitter': return 300;
-    case 'linkedin': return 400; // Taller for LinkedIn feeds
-    default: return 220;
+    case 'youtube':
+    case 'twitter':
+    case 'linkedin':
+    case 'web':
+      return true;
+    default:
+      return false;
+  }
+};
+
+export const getDynamicHeight = (platform: Platform): number => {
+  switch (platform) {
+    case 'youtube': return 220;
+    case 'instagram': return 580;
+    case 'tiktok': return 500;
+    case 'pinterest': return 340;
+    case 'twitter': return 400;
+    case 'linkedin': return 400;
+    default: return 250;
   }
 };
 

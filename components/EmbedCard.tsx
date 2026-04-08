@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Dimensions, Modal, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
+import YoutubePlayer from 'react-native-youtube-iframe';
 import { ContentItem, getDynamicHeight } from '../utils/share-utils';
 import { Trash2, Tag, X } from 'lucide-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { GestureHandlerRootView, LongPressGestureHandler, State, TapGestureHandler } from 'react-native-gesture-handler';
 
 interface EmbedCardProps {
   item: ContentItem;
@@ -13,113 +13,114 @@ interface EmbedCardProps {
   customWidth?: string | number;
 }
 
-const { width } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Build the HTML source for platforms that need it
+const getWebViewSource = (item: ContentItem) => {
+  switch (item.platform) {
+    case 'instagram':
+      return {
+        html: `
+          <!DOCTYPE html>
+          <html><head>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+          <style>
+            * { margin: 0; padding: 0; }
+            html, body { width: 100%; height: 100%; background: #fafafa; overflow: hidden; }
+            iframe { width: 100%; height: 100%; border: none; }
+          </style>
+          </head><body>
+          <iframe src="https://www.instagram.com/p/${item.embedUrl}/embed/captioned/" allowfullscreen></iframe>
+          </body></html>
+        `,
+      };
+
+    default:
+      return { uri: item.embedUrl };
+  }
+};
 
 export const EmbedCard = ({ item, onDelete, onTag, customWidth }: EmbedCardProps) => {
-  const [menuVisible, setMenuVisible] = useState(false);
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
+  const [showActions, setShowActions] = useState(false);
   const [hasError, setHasError] = useState(false);
 
-  const handleLongPress = () => {
-    scale.value = withSpring(0.95, {}, () => {
-      scale.value = withSpring(1);
-    });
-    setMenuVisible(true);
-  };
+  const cardHeight = getDynamicHeight(item.platform);
 
+  const renderContent = () => {
+    if (hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Content unavailable</Text>
+        </View>
+      );
+    }
+
+    // YouTube uses the dedicated player
+    if (item.platform === 'youtube') {
+      return (
+        <YoutubePlayer
+          height={cardHeight}
+          videoId={item.embedUrl}
+          play={false}
+          webViewProps={{
+            allowsInlineMediaPlayback: true,
+            mediaPlaybackRequiresUserAction: false,
+          }}
+          onError={() => setHasError(true)}
+        />
+      );
+    }
+
+    // Everything else uses WebView
+    return (
+      <WebView
+        source={getWebViewSource(item)}
+        style={styles.webview}
+        scrollEnabled={true}
+        onError={() => setHasError(true)}
+        onHttpError={(syntheticEvent) => {
+          const { nativeEvent } = syntheticEvent;
+          if (nativeEvent.statusCode >= 400) setHasError(true);
+        }}
+        allowsFullscreenVideo={true}
+        mediaPlaybackRequiresUserAction={false}
+        allowsInlineMediaPlayback={true}
+        domStorageEnabled={true}
+        javaScriptEnabled={true}
+        originWhitelist={['*']}
+        scalesPageToFit={false}
+        automaticallyAdjustContentInsets={false}
+        mixedContentMode="always"
+        allowsLinkPreview={false}
+      />
+    );
+  };
 
   return (
     <View style={[styles.container, customWidth ? { width: customWidth as any } : {}]}>
-      <LongPressGestureHandler
-        onHandlerStateChange={({ nativeEvent }) => {
-          if (nativeEvent.state === State.ACTIVE) {
-            handleLongPress();
-          }
-        }}
-        minDurationMs={500}
-      >
-        <Animated.View style={[styles.card, animatedStyle]}>
-          <View style={[styles.webviewContainer, { height: getDynamicHeight(item.platform) }]}>
-            {hasError ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>Content unavailable</Text>
-              </View>
-            ) : (
-              <WebView
-                source={{ uri: item.embedUrl }}
-                style={styles.webview}
-                scrollEnabled={true}
-                onError={() => setHasError(true)}
-                allowsFullscreenVideo={true}
-                mediaPlaybackRequiresUserAction={false}
-                allowsInlineMediaPlayback={true}
-                domStorageEnabled={true}
-                javaScriptEnabled={true}
-                originWhitelist={['*']}
-                scalesPageToFit={true}
-                automaticallyAdjustContentInsets={false}
-                userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1"
-                injectedJavaScript={`
-                  const meta = document.createElement('meta');
-                  meta.setAttribute('name', 'viewport');
-                  meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-                  document.getElementsByTagName('head')[0].appendChild(meta);
-                `}
-              />
-            )}
-          </View>
-        </Animated.View>
-      </LongPressGestureHandler>
+      <View style={styles.card}>
+        <View style={[styles.webviewContainer, { height: cardHeight }]}>
+          {renderContent()}
 
-      <Modal
-        visible={menuVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
-      >
-        <Pressable 
-          style={styles.modalOverlay} 
-          onPress={() => setMenuVisible(false)}
-        >
-          <View style={styles.menuContainer}>
-            <Text style={styles.menuTitle}>Options</Text>
-            
-            <TouchableOpacity 
-              style={styles.menuItem} 
-              onPress={() => {
-                setMenuVisible(false);
-                onTag(item.id);
-              }}
+          {/* Pinterest-style floating action buttons */}
+          <View style={styles.floatingActions}>
+            <TouchableOpacity
+              style={styles.floatingButton}
+              onPress={() => onTag(item.id)}
+              activeOpacity={0.8}
             >
-              <Tag size={18} color="#007AFF" />
-              <Text style={styles.menuItemText}>Tag to Board</Text>
+              <Tag size={16} color="#333" />
             </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.menuItem, styles.deleteItem]} 
-              onPress={() => {
-                setMenuVisible(false);
-                onDelete(item.id);
-              }}
+            <TouchableOpacity
+              style={[styles.floatingButton, styles.deleteButton]}
+              onPress={() => onDelete(item.id)}
+              activeOpacity={0.8}
             >
-              <Trash2 size={18} color="#FF3B30" />
-              <Text style={[styles.menuItemText, styles.deleteText]}>Delete</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.closeButton}
-              onPress={() => setMenuVisible(false)}
-            >
-              <Text style={styles.closeButtonText}>Cancel</Text>
+              <Trash2 size={16} color="#FF3B30" />
             </TouchableOpacity>
           </View>
-        </Pressable>
-      </Modal>
+        </View>
+      </View>
     </View>
   );
 };
@@ -139,65 +140,37 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
-  touchable: {
-    flex: 1,
-  },
   webviewContainer: {
-    height: 180, // Fixed height for common aspect ratio in grid
     width: '100%',
     backgroundColor: '#F2F2F7',
+    position: 'relative',
   },
   webview: {
     flex: 1,
     backgroundColor: 'transparent',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuContainer: {
-    width: width * 0.8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-  },
-  menuTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 20,
-    color: '#000',
-  },
-  menuItem: {
+  floatingActions: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
     flexDirection: 'row',
+    gap: 8,
+  },
+  floatingButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
     alignItems: 'center',
-    width: '100%',
-    paddingVertical: 15,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
-    gap: 12,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  menuItemText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000',
-  },
-  deleteItem: {
-    borderBottomWidth: 0,
-  },
-  deleteText: {
-    color: '#FF3B30',
-  },
-  closeButton: {
-    marginTop: 15,
-    padding: 10,
-  },
-  closeButtonText: {
-    color: '#8E8E93',
-    fontSize: 15,
-    fontWeight: '600',
+  deleteButton: {
+    // inherits from floatingButton, just different icon color
   },
   errorContainer: {
     flex: 1,
@@ -210,10 +183,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     fontWeight: '600',
-  },
-  gestureOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-    zIndex: 1,
   },
 });

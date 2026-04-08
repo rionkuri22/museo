@@ -17,6 +17,7 @@ interface MuseoState {
   createBoard: (name: string) => string;
   tagToBoard: (itemId: string, boardId: string) => void;
   getStats: () => Record<Platform, number>;
+  clearAll: () => void;
 }
 
 export const useMuseoStore = create<MuseoState>()(
@@ -27,6 +28,10 @@ export const useMuseoStore = create<MuseoState>()(
         { id: 'all', name: 'All Content', itemIds: [] }
       ],
       
+      clearAll: () => set({ 
+        items: [], 
+        boards: [{ id: 'all', name: 'All Content', itemIds: [] }] 
+      }),
       addItem: (item) => set((state) => ({
         items: [item, ...state.items]
       })),
@@ -68,6 +73,7 @@ export const useMuseoStore = create<MuseoState>()(
           tiktok: 0,
           pinterest: 0,
           twitter: 0,
+          linkedin: 0,
           web: 0
         };
         

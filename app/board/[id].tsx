@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, ScrollView } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
 import { useMuseoStore } from '../../store/useMuseoStore';
 import { EmbedCard } from '../../components/EmbedCard';
 import { BoardPicker } from '../../components/BoardPicker';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { useLocalSearchParams, Stack, Href } from 'expo-router';
-import { ContentItem, getDynamicHeight } from '../../utils/share-utils';
+import { ContentItem, getDynamicHeight, isFullWidth } from '../../utils/share-utils';
 
 export default function BoardDetailView() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,21 +35,40 @@ export default function BoardDetailView() {
     );
   }
 
-  const leftColumn: ContentItem[] = [];
-  const rightColumn: ContentItem[] = [];
-  let leftHeight = 0;
-  let rightHeight = 0;
+  // Build mixed layout same as landing page
+  type LayoutRow = { type: 'full'; item: ContentItem } | { type: 'pair'; left: ContentItem[]; right: ContentItem[] };
+  const rows: LayoutRow[] = [];
+  let halfWidthBuffer: ContentItem[] = [];
+
+  const flushBuffer = () => {
+    if (halfWidthBuffer.length === 0) return;
+    const left: ContentItem[] = [];
+    const right: ContentItem[] = [];
+    let leftH = 0;
+    let rightH = 0;
+    halfWidthBuffer.forEach(item => {
+      const h = getDynamicHeight(item.platform);
+      if (leftH <= rightH) {
+        left.push(item);
+        leftH += h;
+      } else {
+        right.push(item);
+        rightH += h;
+      }
+    });
+    rows.push({ type: 'pair', left, right });
+    halfWidthBuffer = [];
+  };
 
   boardItems.forEach(item => {
-    const itemHeight = getDynamicHeight(item.platform);
-    if (leftHeight <= rightHeight) {
-      leftColumn.push(item);
-      leftHeight += itemHeight;
+    if (isFullWidth(item.platform)) {
+      flushBuffer();
+      rows.push({ type: 'full', item });
     } else {
-      rightColumn.push(item);
-      rightHeight += itemHeight;
+      halfWidthBuffer.push(item);
     }
   });
+  flushBuffer();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -64,30 +82,46 @@ export default function BoardDetailView() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.masonryContainer}>
-            <View style={styles.column}>
-              {leftColumn.map(item => (
-                <EmbedCard 
-                  key={item.id}
-                  item={item} 
+          {rows.map((row, rowIdx) => {
+            if (row.type === 'full') {
+              return (
+                <EmbedCard
+                  key={row.item.id}
+                  item={row.item}
                   onDelete={handleDelete}
                   onTag={handleTag}
                   customWidth="100%"
                 />
-              ))}
-            </View>
-            <View style={styles.column}>
-              {rightColumn.map(item => (
-                <EmbedCard 
-                  key={item.id}
-                  item={item} 
-                  onDelete={handleDelete}
-                  onTag={handleTag}
-                  customWidth="100%"
-                />
-              ))}
-            </View>
-          </View>
+              );
+            } else {
+              return (
+                <View key={`pair-${rowIdx}`} style={styles.masonryContainer}>
+                  <View style={styles.column}>
+                    {row.left.map(item => (
+                      <EmbedCard
+                        key={item.id}
+                        item={item}
+                        onDelete={handleDelete}
+                        onTag={handleTag}
+                        customWidth="100%"
+                      />
+                    ))}
+                  </View>
+                  <View style={styles.column}>
+                    {row.right.map(item => (
+                      <EmbedCard
+                        key={item.id}
+                        item={item}
+                        onDelete={handleDelete}
+                        onTag={handleTag}
+                        customWidth="100%"
+                      />
+                    ))}
+                  </View>
+                </View>
+              );
+            }
+          })}
         </ScrollView>
       )}
       

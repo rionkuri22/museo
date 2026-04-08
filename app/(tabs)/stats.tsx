@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { useMuseoStore } from '../../store/useMuseoStore';
-import { ChevronRight, Play, Camera, Music, Bookmark, Send, Globe, Folder } from 'lucide-react-native';
+import { ChevronRight, Play, Camera, Music, Bookmark, Send, Globe, Folder, Briefcase } from 'lucide-react-native';
 import { router, Href } from 'expo-router';
 import { Platform } from '../../utils/share-utils';
 
@@ -12,6 +12,7 @@ const PlatformIcon = ({ platform, size = 20 }: { platform: Platform; size?: numb
     case 'tiktok': return <Music size={size} color="#000000" />;
     case 'pinterest': return <Bookmark size={size} color="#BD081C" />;
     case 'twitter': return <Send size={size} color="#1DA1F2" />;
+    case 'linkedin': return <Briefcase size={size} color="#0A66C2" />;
     default: return <Globe size={size} color="#007AFF" />;
   }
 };
@@ -21,7 +22,10 @@ export default function StatsPage() {
   const stats = getStats();
   const totalItems = Object.values(stats).reduce((a, b) => a + b, 0);
 
-  const platformList = Object.entries(stats).filter(([_, count]) => count > 0);
+  // Sort by count descending, filter out zeros
+  const platformList = Object.entries(stats)
+    .filter(([_, count]) => count > 0)
+    .sort(([, a], [, b]) => b - a);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -31,17 +35,25 @@ export default function StatsPage() {
           <Text style={styles.totalLabel}>Total Items Shared</Text>
           <Text style={styles.totalValue}>{totalItems}</Text>
           
-          <View style={styles.platformGrid}>
-            {platformList.map(([platform, count]) => (
-              <View key={platform} style={styles.platformItem}>
-                <PlatformIcon platform={platform as Platform} size={16} />
-                <Text style={styles.platformName}>
-                  {platform.charAt(0).toUpperCase() + platform.slice(1)}
-                </Text>
-                <Text style={styles.platformCount}>{count}</Text>
-              </View>
-            ))}
-          </View>
+          {platformList.length > 0 && (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.platformScroll}
+            >
+              {platformList.map(([platform, count]) => (
+                <View key={platform} style={styles.platformPill}>
+                  <PlatformIcon platform={platform as Platform} size={14} />
+                  <Text style={styles.platformName}>
+                    {platform.charAt(0).toUpperCase() + platform.slice(1)}
+                  </Text>
+                  <View style={styles.countBadge}>
+                    <Text style={styles.countText}>{count}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          )}
         </View>
       </View>
 
@@ -110,20 +122,19 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000',
     marginTop: 4,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  platformGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+  platformScroll: {
+    gap: 8,
+    paddingRight: 8,
   },
-  platformItem: {
+  platformPill: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F2F2F7',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
     gap: 6,
   },
   platformName: {
@@ -131,10 +142,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#3A3A3C',
   },
-  platformCount: {
-    fontSize: 13,
+  countBadge: {
+    backgroundColor: '#007AFF',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  countText: {
+    fontSize: 11,
     fontWeight: '700',
-    color: '#007AFF',
+    color: '#FFFFFF',
   },
   boardList: {
     gap: 12,

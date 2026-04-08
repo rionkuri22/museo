@@ -18,11 +18,6 @@ export default function AddContentPage() {
     }
 
     const embedUrl = getEmbedUrl(url.trim());
-    if (!embedUrl) {
-      Alert.alert('Oops!', "Museo doesn't support this.");
-      return;
-    }
-
     const platform = detectPlatform(url.trim());
     
     addItem({
@@ -30,7 +25,7 @@ export default function AddContentPage() {
       url: url.trim(),
       embedUrl: embedUrl,
       platform: platform,
-      title: 'New Content', // Default title, could be enriched later
+      title: 'New Content',
       addedAt: Date.now(),
       boardIds: [],
     });
@@ -48,7 +43,7 @@ export default function AddContentPage() {
         <View style={styles.header}>
           <LinkIcon size={48} color="#007AFF" strokeWidth={1.5} />
           <Text style={styles.title}>Add New Content</Text>
-          <Text style={styles.subtitle}>Paste a link from YouTube, Instagram, TikTok, or Pinterest to save it to your board.</Text>
+          <Text style={styles.subtitle}>Paste any link to save it to your board.</Text>
         </View>
 
         <View style={styles.inputContainer}>
@@ -75,11 +70,11 @@ export default function AddContentPage() {
         </View>
 
         <View style={styles.tips}>
-          <Text style={styles.tipTitle}>Supported Platforms</Text>
+          <Text style={styles.tipTitle}>Works best with</Text>
           <View style={styles.chipContainer}>
-            {['YouTube', 'Instagram', 'TikTok', 'Pinterest', 'X/Twitter', 'Web'].map((p) => (
-              <View key={p} style={styles.chip}>
-                <Text style={styles.chipText}>{p}</Text>
+            {['YouTube', 'Instagram', 'TikTok', 'Pinterest', 'X/Twitter', 'LinkedIn', 'Any URL'].map((p) => (
+              <View key={p} style={[styles.chip, p === 'Any URL' && styles.chipHighlight]}>
+                <Text style={[styles.chipText, p === 'Any URL' && styles.chipTextHighlight]}>{p}</Text>
               </View>
             ))}
           </View>
@@ -165,9 +160,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
   },
+  chipHighlight: {
+    backgroundColor: '#007AFF15',
+    borderWidth: 1,
+    borderColor: '#007AFF40',
+  },
   chipText: {
     fontSize: 14,
     color: '#3A3A3C',
     fontWeight: '500',
+  },
+  chipTextHighlight: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
 });
