@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, SafeAreaView, ScrollView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { ContentItem } from '../../utils/share-utils';
+import { ContentItem, getDynamicHeight } from '../../utils/share-utils';
 import { useMuseoStore } from '../../store/useMuseoStore';
 import { EmbedCard } from '../../components/EmbedCard';
 import { BoardPicker } from '../../components/BoardPicker';
@@ -30,8 +30,22 @@ export default function LandingPage() {
     );
   }
 
-  const leftColumn = items.filter((_, i) => i % 2 === 0);
-  const rightColumn = items.filter((_, i) => i % 2 !== 0);
+  const leftColumn: ContentItem[] = [];
+  const rightColumn: ContentItem[] = [];
+  let leftHeight = 0;
+  let rightHeight = 0;
+
+  // Greedy masonry algorithm: add item to the shorter column
+  items.forEach(item => {
+    const itemHeight = getDynamicHeight(item.platform);
+    if (leftHeight <= rightHeight) {
+      leftColumn.push(item);
+      leftHeight += itemHeight;
+    } else {
+      rightColumn.push(item);
+      rightHeight += itemHeight;
+    }
+  });
 
   return (
     <SafeAreaView style={styles.container}>

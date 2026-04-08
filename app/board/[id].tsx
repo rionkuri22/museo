@@ -6,7 +6,7 @@ import { EmbedCard } from '../../components/EmbedCard';
 import { BoardPicker } from '../../components/BoardPicker';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { useLocalSearchParams, Stack, Href } from 'expo-router';
-import { ContentItem } from '../../utils/share-utils';
+import { ContentItem, getDynamicHeight } from '../../utils/share-utils';
 
 export default function BoardDetailView() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,8 +36,21 @@ export default function BoardDetailView() {
     );
   }
 
-  const leftColumn = boardItems.filter((_, i) => i % 2 === 0);
-  const rightColumn = boardItems.filter((_, i) => i % 2 !== 0);
+  const leftColumn: ContentItem[] = [];
+  const rightColumn: ContentItem[] = [];
+  let leftHeight = 0;
+  let rightHeight = 0;
+
+  boardItems.forEach(item => {
+    const itemHeight = getDynamicHeight(item.platform);
+    if (leftHeight <= rightHeight) {
+      leftColumn.push(item);
+      leftHeight += itemHeight;
+    } else {
+      rightColumn.push(item);
+      rightHeight += itemHeight;
+    }
+  });
 
   return (
     <SafeAreaView style={styles.container}>

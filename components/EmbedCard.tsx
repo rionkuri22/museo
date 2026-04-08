@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Dimensions, Modal, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { ContentItem } from '../utils/share-utils';
+import { ContentItem, getDynamicHeight } from '../utils/share-utils';
 import { Trash2, Tag, X } from 'lucide-react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { GestureHandlerRootView, LongPressGestureHandler, State, TapGestureHandler } from 'react-native-gesture-handler';
 
 interface EmbedCardProps {
   item: ContentItem;
@@ -31,27 +32,19 @@ export const EmbedCard = ({ item, onDelete, onTag, customWidth }: EmbedCardProps
     setMenuVisible(true);
   };
 
-  const getDynamicHeight = () => {
-    switch (item.platform) {
-      case 'youtube': return 160; // Shorter for YT to show more
-      case 'instagram': return 350; // taller for IG
-      case 'tiktok': return 420; // very tall
-      case 'pinterest': return 380;
-      case 'twitter': return 300;
-      default: return 200;
-    }
-  };
 
   return (
     <View style={[styles.container, customWidth ? { width: customWidth as any } : {}]}>
-      <Animated.View style={[styles.card, animatedStyle]}>
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onLongPress={handleLongPress}
-          delayLongPress={500}
-          style={styles.touchable}
-        >
-          <View style={[styles.webviewContainer, { height: getDynamicHeight() }]}>
+      <LongPressGestureHandler
+        onHandlerStateChange={({ nativeEvent }) => {
+          if (nativeEvent.state === State.ACTIVE) {
+            handleLongPress();
+          }
+        }}
+        minDurationMs={500}
+      >
+        <Animated.View style={[styles.card, animatedStyle]}>
+          <View style={[styles.webviewContainer, { height: getDynamicHeight(item.platform) }]}>
             {hasError ? (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>Content unavailable</Text>
@@ -60,8 +53,7 @@ export const EmbedCard = ({ item, onDelete, onTag, customWidth }: EmbedCardProps
               <WebView
                 source={{ uri: item.embedUrl }}
                 style={styles.webview}
-                scrollEnabled={false}
-                pointerEvents="none"
+                scrollEnabled={true}
                 onError={() => setHasError(true)}
                 allowsFullscreenVideo={true}
                 mediaPlaybackRequiresUserAction={false}
@@ -81,8 +73,8 @@ export const EmbedCard = ({ item, onDelete, onTag, customWidth }: EmbedCardProps
               />
             )}
           </View>
-        </TouchableOpacity>
-      </Animated.View>
+        </Animated.View>
+      </LongPressGestureHandler>
 
       <Modal
         visible={menuVisible}
@@ -218,5 +210,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     fontWeight: '600',
+  },
+  gestureOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
+    zIndex: 1,
   },
 });
