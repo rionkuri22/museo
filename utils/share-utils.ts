@@ -28,7 +28,7 @@ export const getEmbedUrl = (url: string): string | null => {
         const id = url.includes('youtu.be/') 
           ? url.split('youtu.be/')[1]?.split('?')[0]
           : new URL(url).searchParams.get('v');
-        return id ? `https://www.youtube.com/embed/${id}` : null;
+        return id ? `https://www.youtube.com/embed/${id}?origin=https://www.youtube.com&modestbranding=1&rel=0` : null;
       }
       
       case 'instagram': {
@@ -42,22 +42,18 @@ export const getEmbedUrl = (url: string): string | null => {
       }
       
       case 'pinterest': {
-        // Pinterest embeds are tricky via URL, often require a widget script
-        // For now, we'll try to use a direct pin embed link if possible
-        const id = url.includes('pin.it/') 
-          ? null // Would need to resolve short link
-          : url.split('/pin/')[1]?.split('/')[0];
+        const idRegex = /\/pin\/(\d+)/;
+        const match = url.match(idRegex);
+        const id = match ? match[1] : null;
         return id ? `https://assets.pinterest.com/ext/embed.html?id=${id}` : url;
       }
       
       case 'twitter': {
-        // Twitter embeds usually require oEmbed or a widget
-        // For WebView, we can use the publish.twitter.com approach or just the URL
         return `https://platform.twitter.com/embed/Tweet.html?url=${encodeURIComponent(url)}`;
       }
       
       default:
-        return url; // Fallback to raw URL for web
+        return url;
     }
   } catch (e) {
     return null;

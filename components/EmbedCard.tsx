@@ -9,11 +9,12 @@ interface EmbedCardProps {
   item: ContentItem;
   onDelete: (id: string) => void;
   onTag: (id: string) => void;
+  customWidth?: string | number;
 }
 
 const { width } = Dimensions.get('window');
 
-export const EmbedCard = ({ item, onDelete, onTag }: EmbedCardProps) => {
+export const EmbedCard = ({ item, onDelete, onTag, customWidth }: EmbedCardProps) => {
   const [menuVisible, setMenuVisible] = useState(false);
   const scale = useSharedValue(1);
 
@@ -30,8 +31,19 @@ export const EmbedCard = ({ item, onDelete, onTag }: EmbedCardProps) => {
     setMenuVisible(true);
   };
 
+  const getDynamicHeight = () => {
+    switch (item.platform) {
+      case 'youtube': return 160; // Shorter for YT to show more
+      case 'instagram': return 350; // taller for IG
+      case 'tiktok': return 420; // very tall
+      case 'pinterest': return 380;
+      case 'twitter': return 300;
+      default: return 200;
+    }
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, customWidth ? { width: customWidth as any } : {}]}>
       <Animated.View style={[styles.card, animatedStyle]}>
         <TouchableOpacity
           activeOpacity={0.9}
@@ -39,7 +51,7 @@ export const EmbedCard = ({ item, onDelete, onTag }: EmbedCardProps) => {
           delayLongPress={500}
           style={styles.touchable}
         >
-          <View style={styles.webviewContainer}>
+          <View style={[styles.webviewContainer, { height: getDynamicHeight() }]}>
             {hasError ? (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>Content unavailable</Text>
@@ -51,6 +63,21 @@ export const EmbedCard = ({ item, onDelete, onTag }: EmbedCardProps) => {
                 scrollEnabled={false}
                 pointerEvents="none"
                 onError={() => setHasError(true)}
+                allowsFullscreenVideo={true}
+                mediaPlaybackRequiresUserAction={false}
+                allowsInlineMediaPlayback={true}
+                domStorageEnabled={true}
+                javaScriptEnabled={true}
+                originWhitelist={['*']}
+                scalesPageToFit={true}
+                automaticallyAdjustContentInsets={false}
+                userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0.3 Mobile/15E148 Safari/604.1"
+                injectedJavaScript={`
+                  const meta = document.createElement('meta');
+                  meta.setAttribute('name', 'viewport');
+                  meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+                  document.getElementsByTagName('head')[0].appendChild(meta);
+                `}
               />
             )}
           </View>

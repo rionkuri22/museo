@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, SafeAreaView, ScrollView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useMuseoStore } from '../../store/useMuseoStore';
 import { EmbedCard } from '../../components/EmbedCard';
@@ -36,6 +36,9 @@ export default function BoardDetailView() {
     );
   }
 
+  const leftColumn = boardItems.filter((_, i) => i % 2 === 0);
+  const rightColumn = boardItems.filter((_, i) => i % 2 !== 0);
+
   return (
     <SafeAreaView style={styles.container}>
       <OfflineBanner />
@@ -47,19 +50,32 @@ export default function BoardDetailView() {
           <Text style={styles.emptySubtitle}>Go to your main board and tag some content here.</Text>
         </View>
       ) : (
-        <FlashList
-          data={boardItems}
-          numColumns={2}
-          keyExtractor={(item: ContentItem) => item.id}
-          renderItem={({ item }: { item: ContentItem }) => (
-            <EmbedCard 
-              item={item} 
-              onDelete={handleDelete}
-              onTag={handleTag}
-            />
-          )}
-          contentContainerStyle={styles.listContent}
-        />
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.masonryContainer}>
+            <View style={styles.column}>
+              {leftColumn.map(item => (
+                <EmbedCard 
+                  key={item.id}
+                  item={item} 
+                  onDelete={handleDelete}
+                  onTag={handleTag}
+                  customWidth="100%"
+                />
+              ))}
+            </View>
+            <View style={styles.column}>
+              {rightColumn.map(item => (
+                <EmbedCard 
+                  key={item.id}
+                  item={item} 
+                  onDelete={handleDelete}
+                  onTag={handleTag}
+                  customWidth="100%"
+                />
+              ))}
+            </View>
+          </View>
+        </ScrollView>
       )}
       
       <BoardPicker
@@ -76,14 +92,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
-  listContent: {
+  scrollContent: {
     padding: 6,
+  },
+  masonryContainer: {
+    flexDirection: 'row',
+  },
+  column: {
+    flex: 1,
   },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
+    marginTop: 100,
   },
   emptyTitle: {
     fontSize: 20,

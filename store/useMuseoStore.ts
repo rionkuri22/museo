@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { persist } from 'zustand/middleware';
+import * as SecureStore from 'expo-secure-store';
 import { ContentItem, Platform } from '../utils/share-utils';
 
 interface Board {
@@ -79,7 +79,18 @@ export const useMuseoStore = create<MuseoState>()(
     }),
     {
       name: 'museo-storage',
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: {
+        getItem: async (name: string) => {
+          const value = await SecureStore.getItemAsync(name);
+          return value ? JSON.parse(value) : null;
+        },
+        setItem: async (name: string, value: any) => {
+          await SecureStore.setItemAsync(name, JSON.stringify(value));
+        },
+        removeItem: async (name: string) => {
+          await SecureStore.deleteItemAsync(name);
+        },
+      },
     }
   )
 );

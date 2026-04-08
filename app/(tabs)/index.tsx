@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, SafeAreaView, ScrollView } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { ContentItem } from '../../utils/share-utils';
 import { useMuseoStore } from '../../store/useMuseoStore';
 import { EmbedCard } from '../../components/EmbedCard';
 import { BoardPicker } from '../../components/BoardPicker';
+import { OfflineBanner } from '../../components/OfflineBanner';
 
 export default function LandingPage() {
   const { items, removeItem } = useMuseoStore();
@@ -29,22 +30,39 @@ export default function LandingPage() {
     );
   }
 
+  const leftColumn = items.filter((_, i) => i % 2 === 0);
+  const rightColumn = items.filter((_, i) => i % 2 !== 0);
+
   return (
     <SafeAreaView style={styles.container}>
-      <FlashList
-        data={items}
-        numColumns={2}
-        keyExtractor={(item: ContentItem) => item.id}
-        renderItem={({ item }: { item: ContentItem }) => (
-          <EmbedCard 
-            item={item} 
-            onDelete={handleDelete}
-            onTag={handleTag}
-          />
-        )}
-        contentContainerStyle={styles.listContent}
-      />
-      
+      <OfflineBanner />
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.masonryContainer}>
+          <View style={styles.column}>
+            {leftColumn.map(item => (
+              <EmbedCard 
+                key={item.id}
+                item={item} 
+                onDelete={handleDelete}
+                onTag={handleTag}
+                customWidth="100%"
+              />
+            ))}
+          </View>
+          <View style={styles.column}>
+            {rightColumn.map(item => (
+              <EmbedCard 
+                key={item.id}
+                item={item} 
+                onDelete={handleDelete}
+                onTag={handleTag}
+                customWidth="100%"
+              />
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+
       <BoardPicker
         itemId={selectedItemId}
         visible={boardPickerVisible}
@@ -59,14 +77,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
-  listContent: {
+  scrollContent: {
     padding: 6,
+  },
+  masonryContainer: {
+    flexDirection: 'row',
+  },
+  column: {
+    flex: 1,
   },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 40,
+    marginTop: 100,
   },
   emptyTitle: {
     fontSize: 20,
