@@ -1,3 +1,10 @@
+Tool used: Antigravity
+
+Read SPEC.md in this project. Implement the full phone app
+exactly as specified. Create all necessary files. Make sure
+error handling matches what the spec describes. After creating the
+files, run the app to verify it starts without errors.
+
 Review the code in this project against the spec in SPEC.md.
 For each item in the acceptance criteria, check whether the code
 actually implements it correctly. Also check for:
@@ -9,6 +16,9 @@ Format your review in a new file called REVIEW.md and as a numbered list of find
 [PASS], [FAIL], or [WARN]. Be specific — reference file names and
 line numbers.
 
+How does the app remmeber the content after closing the app?
+
+
 Linkedin works perfectly.
 Pinterest  seems to be croppped well etc. but opens popup asking to login.
 Youtube works now if I press Watch on Youtube after the initial error screen. is there a way to get rid of the inital error screen?
@@ -17,3 +27,17 @@ X is not previewing at all. Completely blank.
 When I paste in Tiktok link says it is not supported. Isn't there a way to not limit embedding to specific sites but just identify the source from url?
 Most importantly, the long press feature (details in SPEC.md) are gone. Bring them back. Ideally I want the popup to look like it does on Pinterest. Shown in screenshot
 Make the platform count  on the stats section more space efficient. Maybe a sideways scroll with the most often shown by default and by scrolling see others.
+
+Explain all react native concepts in an organized way that makes it clear what part of output it is for
+
+Why is the project split into `app`, `components`, `store`, and `utils` etc?
+
+Why does the tab folder use parentheses?
+
+What does SafeAreaView do?
+
+Don't web links need <a> tags? Why does it work without it?
+
+Why do we use injectedJavaScript? Can't we just use the url?
+
+What is Zustand? Is it diff from useState?
