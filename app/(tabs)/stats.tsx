@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, FlatList } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Share, Alert } from 'react-native';
 import { useMuseoStore } from '../../store/useMuseoStore';
-import { ChevronRight, Play, Camera, Music, Bookmark, Send, Globe, Folder, Briefcase } from 'lucide-react-native';
+import { ChevronRight, Play, Camera, Music, Bookmark, Send, Globe, Folder, Share2, Briefcase } from 'lucide-react-native';
 import { router, Href } from 'expo-router';
 import { Platform } from '../../utils/share-utils';
 
@@ -13,19 +13,46 @@ const PlatformIcon = ({ platform, size = 20 }: { platform: Platform; size?: numb
     case 'pinterest': return <Bookmark size={size} color="#BD081C" />;
     case 'twitter': return <Send size={size} color="#1DA1F2" />;
     case 'linkedin': return <Briefcase size={size} color="#0A66C2" />;
+    case 'spotify': return <Music size={size} color="#1DB954" />;
     default: return <Globe size={size} color="#007AFF" />;
   }
 };
 
 export default function StatsPage() {
-  const { getStats, boards } = useMuseoStore();
+  const { getStats, boards, items } = useMuseoStore();
   const stats = getStats();
-  const totalItems = Object.values(stats).reduce((a, b) => a + b, 0);
+  const totalItemsCount = Object.values(stats).reduce((a, b) => a + b, 0);
 
   // Sort by count descending, filter out zeros
   const platformList = Object.entries(stats)
     .filter(([_, count]) => count > 0)
     .sort(([, a], [, b]) => b - a);
+
+  const handleShareBoard = async (boardId: string, boardName: string) => {
+    const boardItems = boardId === 'all' 
+      ? items 
+      : items.filter(item => item.boardIds.includes(boardId));
+
+    if (boardItems.length === 0) {
+      Alert.alert('Empty Board', 'This board has no items to share.');
+      return;
+    }
+
+    const linksList = boardItems
+      .map((item, index) => `${index + 1}. ${item.title || 'Untitled'}\n   ${item.url}`)
+      .join('\n\n');
+
+    const message = `Check out my Museo board: ${boardName}\n\n${linksList}\n\nShared from Museo`;
+
+    try {
+      await Share.share({
+        message,
+        title: `Museo Board: ${boardName}`,
+      });
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -33,7 +60,7 @@ export default function StatsPage() {
         <Text style={styles.sectionTitle}>Stats</Text>
         <View style={styles.statsCard}>
           <Text style={styles.totalLabel}>Total Items Shared</Text>
-          <Text style={styles.totalValue}>{totalItems}</Text>
+          <Text style={styles.totalValue}>{totalItemsCount}</Text>
           
           {platformList.length > 0 && (
             <ScrollView 
@@ -61,20 +88,32 @@ export default function StatsPage() {
         <Text style={styles.sectionTitle}>Boards</Text>
         <View style={styles.boardList}>
           {boards.map((board) => (
-            <TouchableOpacity 
-              key={board.id} 
-              style={styles.boardItem}
-              onPress={() => router.push(`/board/${board.id}` as Href)}
-            >
-              <View style={styles.boardInfo}>
-                <Folder size={22} color="#007AFF" fill="#007AFF20" />
-                <View>
-                  <Text style={styles.boardName}>{board.name}</Text>
-                  <Text style={styles.boardCount}>{board.itemIds.length} items</Text>
+            <View key={board.id} style={styles.boardContainer}>
+              <TouchableOpacity 
+                style={styles.boardItem}
+                onPress={() => router.push(`/board/${board.id}` as Href)}
+              >
+                <View style={styles.boardInfo}>
+                  <Folder size={22} color="#007AFF" fill="#007AFF20" />
+                  <View>
+                    <Text style={styles.boardName}>{board.name}</Text>
+                    <Text style={styles.boardCount}>
+                      {board.id === 'all' ? items.length : board.itemIds.length} items
+                    </Text>
+                  </View>
                 </View>
-              </View>
-              <ChevronRight size={18} color="#C7C7CC" />
-            </TouchableOpacity>
+                
+                <View style={styles.boardActions}>
+                  <TouchableOpacity 
+                    style={styles.shareButton}
+                    onPress={() => handleShareBoard(board.id, board.name)}
+                  >
+                    <Share2 size={18} color="#007AFF" />
+                  </TouchableOpacity>
+                  <ChevronRight size={18} color="#C7C7CC" />
+                </View>
+              </TouchableOpacity>
+            </View>
           ))}
         </View>
       </View>
@@ -172,6 +211,9 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 2,
   },
+  boardContainer: {
+    width: '100%',
+  },
   boardInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -186,5 +228,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93',
     marginTop: 2,
+  },
+  boardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  shareButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#F2F2F7',
   },
 });

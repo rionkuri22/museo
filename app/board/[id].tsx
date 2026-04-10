@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, SafeAreaView, ScrollView, Share, Alert, TouchableOpacity } from 'react-native';
 import { useMuseoStore } from '../../store/useMuseoStore';
 import { EmbedCard } from '../../components/EmbedCard';
 import { BoardPicker } from '../../components/BoardPicker';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { useLocalSearchParams, Stack, Href } from 'expo-router';
 import { getDynamicHeight, isFullWidth, ContentItem } from '../../utils/share-utils';
+import { Share2 } from 'lucide-react-native';
 
 const NUM_COLUMNS = 2;
 
@@ -74,6 +75,25 @@ export default function BoardDetailView() {
     removeItem(id);
   };
 
+  const handleShare = async () => {
+    if (!board || boardItems.length === 0) return;
+
+    const linksList = boardItems
+      .map((item, index) => `${index + 1}. ${item.title || 'Untitled'}\n   ${item.url}`)
+      .join('\n\n');
+
+    const message = `Check out my Museo board: ${board.name}\n\n${linksList}\n\nShared from Museo`;
+
+    try {
+      await Share.share({
+        message,
+        title: `Museo Board: ${board.name}`,
+      });
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
   const sections = useMasonryLayout(boardItems);
 
   if (!board) {
@@ -87,7 +107,16 @@ export default function BoardDetailView() {
   return (
     <SafeAreaView style={styles.container}>
       <OfflineBanner />
-      <Stack.Screen options={{ title: board.name }} />
+      <Stack.Screen 
+        options={{ 
+          title: board.name,
+          headerRight: () => (
+            <TouchableOpacity onPress={handleShare} style={{ marginRight: 8 }}>
+              <Share2 size={24} color="#007AFF" />
+            </TouchableOpacity>
+          )
+        }} 
+      />
       
       {boardItems.length === 0 ? (
         <View style={styles.emptyContainer}>

@@ -1,4 +1,4 @@
-export type Platform = 'youtube' | 'instagram' | 'tiktok' | 'pinterest' | 'twitter' | 'web' | 'linkedin';
+export type Platform = 'youtube' | 'instagram' | 'tiktok' | 'pinterest' | 'twitter' | 'web' | 'linkedin' | 'spotify';
 
 export interface ContentItem {
   id: string;
@@ -18,6 +18,7 @@ export const detectPlatform = (url: string): Platform => {
   if (url.includes('pinterest.com') || url.includes('pin.it')) return 'pinterest';
   if (url.includes('twitter.com') || url.includes('x.com')) return 'twitter';
   if (url.includes('linkedin.com')) return 'linkedin';
+  if (url.includes('open.spotify.com') || url.includes('spotify.com')) return 'spotify';
   return 'web';
 };
 
@@ -63,6 +64,17 @@ export const getEmbedUrl = (url: string): string => {
         const id = idMatch ? idMatch[1] : null;
         return id ? `https://www.linkedin.com/embed/feed/update/urn:li:activity:${id}` : url;
       }
+
+      case 'spotify': {
+        // Supports album, playlist, track, artist, episode, show URLs.
+        // Input:  https://open.spotify.com/album/37i9dQZF1DX...
+        // Output: https://open.spotify.com/embed/album/37i9dQZF1DX...
+        const match = url.match(/open\.spotify\.com\/(album|playlist|track|artist|episode|show)\/([\w]+)/);
+        if (match) {
+          return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=museo&theme=0`;
+        }
+        return url;
+      }
       
       default:
         return url;
@@ -78,6 +90,8 @@ export const isFullWidth = (platform: Platform): boolean => {
     case 'youtube':
     case 'linkedin':
     case 'web':
+    case 'twitter':   // Twitter widget is a cross-origin iframe — always render at full width
+    case 'spotify':   // Music player needs full width for playlist / album art
       return true;
     default:
       return false;
@@ -88,10 +102,11 @@ export const getDynamicHeight = (platform: Platform): number => {
   switch (platform) {
     case 'youtube': return 210;
     case 'instagram': return 300;
-    case 'tiktok': return 450;
+    case 'tiktok': return 520;    // Tall portrait video
     case 'pinterest': return 340;
     case 'twitter': return 300;
     case 'linkedin': return 350;
+    case 'spotify': return 380;   // Playlist/album player height
     default: return 250;
   }
 };

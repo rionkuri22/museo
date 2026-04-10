@@ -17,6 +17,7 @@ interface MuseoState {
   createBoard: (name: string) => string;
   tagToBoard: (itemId: string, boardId: string) => void;
   updateItem: (id: string, updates: Partial<ContentItem>) => void;
+  moveItem: (fromIndex: number, toIndex: number) => void;
   getStats: () => Record<Platform, number>;
   clearAll: () => void;
 }
@@ -34,7 +35,12 @@ export const useMuseoStore = create<MuseoState>()(
         boards: [{ id: 'all', name: 'All Content', itemIds: [] }] 
       }),
       addItem: (item) => set((state) => ({
-        items: [item, ...state.items]
+        items: [item, ...state.items],
+        boards: state.boards.map(b => 
+          b.id === 'all' 
+            ? { ...b, itemIds: [item.id, ...b.itemIds] }
+            : b
+        )
       })),
       
       removeItem: (id) => set((state) => ({
@@ -70,6 +76,13 @@ export const useMuseoStore = create<MuseoState>()(
         items: state.items.map(i => i.id === id ? { ...i, ...updates } : i)
       })),
       
+      moveItem: (fromIndex, toIndex) => set((state) => {
+        const newItems = [...state.items];
+        const [movedItem] = newItems.splice(fromIndex, 1);
+        newItems.splice(toIndex, 0, movedItem);
+        return { items: newItems };
+      }),
+      
       getStats: () => {
         const items = get().items;
         const initialStats: Record<Platform, number> = {
@@ -79,11 +92,16 @@ export const useMuseoStore = create<MuseoState>()(
           pinterest: 0,
           twitter: 0,
           linkedin: 0,
+          spotify: 0,
           web: 0
         };
         
         return items.reduce((acc, item) => {
-          acc[item.platform] = (acc[item.platform] || 0) + 1;
+          if (acc[item.platform] !== undefined) {
+            acc[item.platform] += 1;
+          } else {
+            acc[item.platform] = 1;
+          }
           return acc;
         }, initialStats);
       }
