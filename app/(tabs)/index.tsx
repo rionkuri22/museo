@@ -1,10 +1,66 @@
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, SafeAreaView, ScrollView } from 'react-native';
-import { ContentItem, getDynamicHeight, isFullWidth } from '../../utils/share-utils';
+import React, { useState, useMemo } from 'react';
+import { StyleSheet, View, Text, SafeAreaView, ScrollView, Dimensions } from 'react-native';
+import { getDynamicHeight, isFullWidth, ContentItem } from '../../utils/share-utils';
 import { useMuseoStore } from '../../store/useMuseoStore';
 import { EmbedCard } from '../../components/EmbedCard';
 import { BoardPicker } from '../../components/BoardPicker';
 import { OfflineBanner } from '../../components/OfflineBanner';
+
+const NUM_COLUMNS = 2;
+
+/**
+ * Pinterest-style masonry layout.
+ * Separates full-width items from half-width items, then distributes
+ * half-width items into columns by always placing into the shortest column.
+ * Renders the final feed in visual order: groups of masonry cards
+ * interspersed with full-width cards at their original positions.
+ */
+function useMasonryLayout(items: ContentItem[]) {
+  return useMemo(() => {
+    type Section =
+      | { kind: 'masonry'; columns: ContentItem[][] }
+      | { kind: 'full'; item: ContentItem };
+
+    const sections: Section[] = [];
+    let halfBuffer: ContentItem[] = [];
+
+    const flushHalf = () => {
+      if (halfBuffer.length === 0) return;
+
+      // If only one half-width item, just make it full-width to fill space
+      if (halfBuffer.length === 1) {
+        sections.push({ kind: 'full', item: halfBuffer[0] });
+        halfBuffer = [];
+        return;
+      }
+
+      const columns: ContentItem[][] = Array.from({ length: NUM_COLUMNS }, () => []);
+      const colHeights: number[] = new Array(NUM_COLUMNS).fill(0);
+
+      // Preserving chronological order (no sort)
+      halfBuffer.forEach((item, idx) => {
+        // Simple alternate distribution to keep order predictable but balanced
+        const targetCol = idx % NUM_COLUMNS;
+        columns[targetCol].push(item);
+      });
+
+      sections.push({ kind: 'masonry', columns });
+      halfBuffer = [];
+    };
+
+    items.forEach(item => {
+      if (isFullWidth(item.platform)) {
+        flushHalf();
+        sections.push({ kind: 'full', item });
+      } else {
+        halfBuffer.push(item);
+      }
+    });
+    flushHalf();
+
+    return sections;
+  }, [items]);
+}
 
 export default function LandingPage() {
   const { items, removeItem } = useMuseoStore();
@@ -21,6 +77,8 @@ export default function LandingPage() {
     removeItem(id);
   };
 
+  const sections = useMasonryLayout(items);
+
   if (items.length === 0) {
     return (
       <View style={styles.emptyContainer}>
@@ -30,87 +88,43 @@ export default function LandingPage() {
     );
   }
 
-  // Build a mixed layout: full-width items break out, smaller items go into 2-col masonry
-  type LayoutRow = { type: 'full'; item: ContentItem } | { type: 'pair'; left: ContentItem[]; right: ContentItem[] };
-  const rows: LayoutRow[] = [];
-
-  // Collect items into groups: full-width items get their own row,
-  // consecutive half-width items get grouped into masonry pairs
-  let halfWidthBuffer: ContentItem[] = [];
-
-  const flushBuffer = () => {
-    if (halfWidthBuffer.length === 0) return;
-    const left: ContentItem[] = [];
-    const right: ContentItem[] = [];
-    let leftH = 0;
-    let rightH = 0;
-    halfWidthBuffer.forEach(item => {
-      const h = getDynamicHeight(item.platform);
-      if (leftH <= rightH) {
-        left.push(item);
-        leftH += h;
-      } else {
-        right.push(item);
-        rightH += h;
-      }
-    });
-    rows.push({ type: 'pair', left, right });
-    halfWidthBuffer = [];
-  };
-
-  items.forEach(item => {
-    if (isFullWidth(item.platform)) {
-      flushBuffer();
-      rows.push({ type: 'full', item });
-    } else {
-      halfWidthBuffer.push(item);
-    }
-  });
-  flushBuffer();
-
   return (
     <SafeAreaView style={styles.container}>
       <OfflineBanner />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {rows.map((row, rowIdx) => {
-          if (row.type === 'full') {
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {sections.map((section, idx) => {
+          if (section.kind === 'full') {
             return (
               <EmbedCard
-                key={row.item.id}
-                item={row.item}
+                key={section.item.id}
+                item={section.item}
                 onDelete={handleDelete}
                 onTag={handleTag}
                 customWidth="100%"
               />
             );
-          } else {
-            return (
-              <View key={`pair-${rowIdx}`} style={styles.masonryContainer}>
-                <View style={styles.column}>
-                  {row.left.map(item => (
-                    <EmbedCard
-                      key={item.id}
-                      item={item}
-                      onDelete={handleDelete}
-                      onTag={handleTag}
-                      customWidth="100%"
-                    />
-                  ))}
-                </View>
-                <View style={styles.column}>
-                  {row.right.map(item => (
-                    <EmbedCard
-                      key={item.id}
-                      item={item}
-                      onDelete={handleDelete}
-                      onTag={handleTag}
-                      customWidth="100%"
-                    />
-                  ))}
-                </View>
-              </View>
-            );
           }
+
+          return (
+            <View key={`masonry-${idx}`} style={styles.masonryRow}>
+              {section.columns.map((colItems, colIdx) => (
+                <View key={`col-${colIdx}`} style={styles.masonryColumn}>
+                  {colItems.map(item => (
+                    <EmbedCard
+                      key={item.id}
+                      item={item}
+                      onDelete={handleDelete}
+                      onTag={handleTag}
+                      customWidth="100%"
+                    />
+                  ))}
+                </View>
+              ))}
+            </View>
+          );
         })}
       </ScrollView>
 
@@ -129,12 +143,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
   },
   scrollContent: {
-    padding: 6,
+    paddingHorizontal: 4,
+    paddingTop: 8,
+    paddingBottom: 20,
   },
-  masonryContainer: {
+  masonryRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
   },
-  column: {
+  masonryColumn: {
     flex: 1,
   },
   emptyContainer: {

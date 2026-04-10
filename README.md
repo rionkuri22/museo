@@ -1,6 +1,12 @@
 # Overview
+A digital "Identity Dashboard" that transforms fragmented bookmarks into a curated visual mood board.
+Personal museum that can be shared with others as representation of self, sense of humor, aesthetics etc.
+
 
 # Screen details
+1. Landing page / Home: default board with all embedded content. where go especially after just adding to Museo and need to assign to a specific board
+2. Add content: Paste urls here to add to Museo
+3. Boards: See stats like total items shared and which platform from
 
 # How to run (from Expo resources)
 1. Install dependencies
@@ -19,8 +25,7 @@
 - Even with Expo, many native features require manu complocated extra steps eg) iOS share sheet integration
 
 
-# Other
-## Adding content to Museo
-- User is on other apps eg) Safari, Youtube, TikTok, Instagram, Pinterest etc. and finds some form of content (image or video) that they want to add to museo
-- User stays in that app and pushes "share" button to find museo in the share sheet
-- User taps on museo in the share sheet. At this point, the URL to the contet is already passed into Museo in the background and made ready to embed
+# Future features
+- Making adding content to Museo more seamless with iOS share sheet
+- Figure out some way to prevent embedded link from asking for log in (esp seems to happen often for Pinterest)
+- Log in, finding and following other accounts

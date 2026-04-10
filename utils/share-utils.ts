@@ -8,6 +8,7 @@ export interface ContentItem {
   title: string;
   addedAt: number;
   boardIds: string[];
+  cropY?: number;
 }
 
 export const detectPlatform = (url: string): Platform => {
@@ -34,12 +35,8 @@ export const getEmbedUrl = (url: string): string => {
       }
       
       case 'instagram': {
-        const id = url.includes('/p/') 
-          ? url.split('/p/')[1]?.split('/')[0]
-          : url.includes('/reels/')
-            ? url.split('/reels/')[1]?.split('/')[0]
-            : url.split('/reel/')[1]?.split('/')[0];
-        return id || url;
+        // Store the full original URL for proper embedding
+        return url;
       }
       
       case 'tiktok': {
@@ -57,8 +54,8 @@ export const getEmbedUrl = (url: string): string => {
       }
       
       case 'twitter': {
-        // Use twitframe.com for reliable tweet embedding
-        return `https://twitframe.com/show?url=${encodeURIComponent(url)}`;
+        // Store the full original URL (normalizing x.com to twitter.com) for proper embedding via Twitter widget.js
+        return url.replace('x.com', 'twitter.com');
       }
 
       case 'linkedin': {
@@ -79,7 +76,6 @@ export const getEmbedUrl = (url: string): string => {
 export const isFullWidth = (platform: Platform): boolean => {
   switch (platform) {
     case 'youtube':
-    case 'twitter':
     case 'linkedin':
     case 'web':
       return true;
@@ -90,14 +86,66 @@ export const isFullWidth = (platform: Platform): boolean => {
 
 export const getDynamicHeight = (platform: Platform): number => {
   switch (platform) {
-    case 'youtube': return 220;
-    case 'instagram': return 580;
-    case 'tiktok': return 500;
+    case 'youtube': return 210;
+    case 'instagram': return 300;
+    case 'tiktok': return 450;
     case 'pinterest': return 340;
-    case 'twitter': return 400;
-    case 'linkedin': return 400;
+    case 'twitter': return 300;
+    case 'linkedin': return 350;
     default: return 250;
   }
+};
+
+/**
+ * Smart layout algorithm: reorders half-width items so columns look balanced.
+ * Distributes items into shortest column FIRST to preserve relative order.
+ */
+export type LayoutRow = 
+  | { type: 'full'; item: ContentItem }
+  | { type: 'pair'; left: ContentItem[]; right: ContentItem[] };
+
+export const buildSmartLayout = (items: ContentItem[]): LayoutRow[] => {
+  const rows: LayoutRow[] = [];
+  let halfWidthBuffer: ContentItem[] = [];
+
+  const flushBuffer = () => {
+    if (halfWidthBuffer.length === 0) return;
+
+    // Preserving chronological order (no sort)
+    const sorted = [...halfWidthBuffer];
+
+    const left: ContentItem[] = [];
+    const right: ContentItem[] = [];
+    let leftH = 0;
+    let rightH = 0;
+
+    sorted.forEach(item => {
+      const h = getDynamicHeight(item.platform);
+      // Always place into the shorter column
+      if (leftH <= rightH) {
+        left.push(item);
+        leftH += h;
+      } else {
+        right.push(item);
+        rightH += h;
+      }
+    });
+
+    rows.push({ type: 'pair', left, right });
+    halfWidthBuffer = [];
+  };
+
+  items.forEach(item => {
+    if (isFullWidth(item.platform)) {
+      flushBuffer();
+      rows.push({ type: 'full', item });
+    } else {
+      halfWidthBuffer.push(item);
+    }
+  });
+  flushBuffer();
+
+  return rows;
 };
 
 export const isValidUrl = (url: string): boolean => {

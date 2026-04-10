@@ -16,6 +16,7 @@ interface MuseoState {
   removeItem: (id: string) => void;
   createBoard: (name: string) => string;
   tagToBoard: (itemId: string, boardId: string) => void;
+  updateItem: (id: string, updates: Partial<ContentItem>) => void;
   getStats: () => Record<Platform, number>;
   clearAll: () => void;
 }
@@ -63,6 +64,10 @@ export const useMuseoStore = create<MuseoState>()(
             ? { ...i, boardIds: i.boardIds.includes(boardId) ? i.boardIds : [...i.boardIds, boardId] }
             : i
         )
+      })),
+      
+      updateItem: (id, updates) => set((state) => ({
+        items: state.items.map(i => i.id === id ? { ...i, ...updates } : i)
       })),
       
       getStats: () => {
